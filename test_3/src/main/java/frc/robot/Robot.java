@@ -14,7 +14,7 @@ import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-
+import com.revrobotics.RelativeEncoder;
 import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.FeedbackDevice;
 import com.ctre.phoenix.motorcontrol.InvertType;
@@ -37,6 +37,7 @@ public class Robot extends TimedRobot {
   private WPI_VictorSPX rightMaster = new WPI_VictorSPX(4); // right front
   private Joystick Joy1 = new Joystick(0);
   private Joystick Joy2 = new Joystick(1);
+  private RelativeEncoder armEncoder;
   Encoder left_encoder = new Encoder(0, 1);
   Encoder right_encoder = new Encoder(2, 3);
   
@@ -56,7 +57,7 @@ public class Robot extends TimedRobot {
   public void robotInit() {
     armMotor = new CANSparkMax(armMotor_ID, MotorType.kBrushless);
     armMotor.restoreFactoryDefaults();
-
+    armEncoder = armMotor.getEncoder();
     //left reverse, right normal
     leftMaster.setInverted(false);
     rightMaster.setInverted(true);
@@ -78,19 +79,34 @@ public class Robot extends TimedRobot {
     enableMotors(false);
   }
 
+  private void reset_fork(){
+    if (armEncoder.getPosition() > 20){
+      armMotor.set(-0.5);
+    }else {
+      armMotor.set(0);
+    }
+  }
+
   @Override
   public void teleopPeriodic() {
-    double power = -Joy1.getRawAxis(1)* 0.6; // remember: negative sign
-    double turn = Joy1.getRawAxis(3)* 0.3;
+    double power = -Joy1.getRawAxis(1)* 0.4; // remember: negative sign
+    double turn = Joy1.getRawAxis(3)* 0.25;
     double armPower = -Joy2.getRawAxis(1); // remember negative sign
-
 
     double left = power + turn;
     double right = power - turn;
-    armMotor.set(armPower);
+    if (armEncoder.getPosition() > -100){
+      armMotor.set(armPower);
+    } else {
+      armMotor.set(0);
+    }
+    if (Joy2.getRawButton(1)){
+      reset_fork();
+    }
     leftMaster.set(left*1.1);
     rightMaster.set(right);
-    
+    SmartDashboard.putNumber("Encoder arm position", armEncoder.getPosition());
+    SmartDashboard.putNumber("Arm motor velocity",armEncoder.getVelocity());
   }
 
   private void enableMotors(boolean on) {
